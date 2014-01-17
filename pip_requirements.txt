@@ -1,5 +1,1 @@
 pygame
-
-# this will become just "openxc" in future, then
-# changes from "next" branch are merged into "master"
--e git+https://github.com/openxc/openxc-python.git@next#egg=openxc
