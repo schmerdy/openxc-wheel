@@ -7,8 +7,14 @@ Written on Python 2.7.2, uses the pygame library to connect to the steering whee
 pip install -r requirements.txt 
 
 from the project directory. Otherwise install the latest pygame version (written on 1.9.2pre) before using the script
+The Logitech wheel only shows 2 axis (steering wheel and accelerator/brake combined) in Linux by default and it also
+does not show the gear shift. To get it fully functional, the wheel needs to be put in "native" mode.
+For Linux, you can use LTWheelConf from the pip_requirements file. Follow the instructions in 
+http://euro-truck-simulator-2.wikia.com/wiki/How_to_get_Logitech_steering_wheels_working_properly_on_Ubuntu_(G25/G27/DF/DFP/DFGT/MF/MR).
+
 
 You also need the OpenXC vehicle simulator, get it from https://github.com/openxc/openxc-vehicle-simulator
+
 
 == Usage ==
 
