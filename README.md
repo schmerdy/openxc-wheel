@@ -1,10 +1,12 @@
+# openxc-wheel
+
 Use to control the OpenXC vehicle simulator (http://openxcplatform.com/projects/simulator.html) from a Logitech G27 steering wheel.
 
-== Requirements ==
+## Requirements
 
 Written on Python 2.7.2, uses the pygame library to connect to the steering wheel. If you use the pip package manager, simply run 
 
-pip install -r requirements.txt 
+*pip install -r pip-requirements.txt*
 
 from the project directory. Otherwise install the latest pygame version (written on 1.9.2pre) before using the script
 The Logitech wheel only shows 2 axis (steering wheel and accelerator/brake combined) in Linux by default and it also
@@ -16,7 +18,7 @@ http://euro-truck-simulator-2.wikia.com/wiki/How_to_get_Logitech_steering_wheels
 You also need the OpenXC vehicle simulator, get it from https://github.com/openxc/openxc-vehicle-simulator
 
 
-== Usage ==
+## Usage
 
 - Start the vehicle simulator by running python emulate.py from the openxc-vehicle-simulator directory
 - Connect the G27 to via USB

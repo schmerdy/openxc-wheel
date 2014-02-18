@@ -3,9 +3,12 @@
 # by Juergen Schmerder (@schmerdy)
 
 import sys
+from wheel import Wheel
 
-DEBUG = False
+DEBUG = True
 
+# first command line parameter can be hostname
+# if simulator runs on different computer
 if len(sys.argv) > 1:
   HOST = sys.argv[1] 
 else:
@@ -28,34 +31,21 @@ ignition_status_values = {
   3: "run"
 }
 
-gear_lever_positions = {
-  -1: "reverse",
-  0: "neutral",
-  1: "first",
-  2: "second",
-  3: "third",
-  4: "fourth",
-  5: "fifth",
-  6: "sixth"
+pedal_names = {
+  Wheel.config.ACCELERATOR: "accelerator", 
+  Wheel.config.BRAKE: "brake",
+  Wheel.config.CLUTCH: None
 }
 
-pedals = {
-  WheelConfig.ACCELERATOR_PEDAL_AXIS: "accelerator", 
-  WheelConfig.BRAKE_PEDAL_AXIS: "brake",
-  WheelConfig.CLUTCH_PEDAL_AXIS: None
+button_names = {
+  Wheel.config.IGNITION: "ignition_status",
+  Wheel.config.PARKING_BRAKE: "parking_brake_status",
+  Wheel.config.HEADLAMP: "headlamp_status",
+  Wheel.config.HIGH_BEAM: "high_beam_status",
+  Wheel.config.WINDSHIELD_WIPER: "windshield_wiper_status"
 }
 
-status_buttons = {
-  WheelConfig.PARKING_BRAKE_BUTTON: "parking_brake_status",
-  WheelConfig.HEADLAMP_BUTTON: "headlamp_status",
-  WheelConfig.HIGH_BEAM_BUTTON: "high_beam_status",
-  WheelConfig.WINDSHIELD_WIPER_BUTTON: "windshield_wiper_status"
-}
-
-def send_data(name, value, HOST):
-  print name, ": ", value
-  if HOST is None:
-    return
+def send_data(name, value, HOST='localhost'):
   url = "http://" + HOST + ":50000/_set_data"
   post_data = urllib.urlencode([('name',name),('value',value)])
   if DEBUG: 
@@ -66,26 +56,6 @@ def send_data(name, value, HOST):
     if DEBUG:
       print ex
 
-ignition_status = 0
-gear_lever_position = 0
-parking_brake_status = False
-headlamp_status = False
-high_beam_status = False
-windshield_wiper_status = False
-
-def get_wheel():
-  wheel = None
-  for j in range(0,pygame.joystick.get_count()):
-    if pygame.joystick.Joystick(j).get_name() == WheelConfig.WHEEL_NAME:
-      wheel = pygame.joystick.Joystick(j)
-      wheel.init()
-      print "Found", wheel.get_name()
-
-  if not wheel:
-    print "No ", WheelConfig.WHEEL_NAME, " found"
-    exit(-1)
-  return wheel
-
 def is_simulator_running(HOST):
   url = "http://" + HOST + ":50000"
   try:
@@ -94,7 +64,7 @@ def is_simulator_running(HOST):
     print ex
     print traceback.format_exc()
     print "No openxc-vehicle-simulator running on", url
-    print "switching to wheel trace"
+    print "logging wheel input instead"
     return False
   return True
  
@@ -103,55 +73,50 @@ def cycle_ignition_status(old_status):
     return 0
   return old_status + 1
 
-pygame.init()                        
+def on_accelerator(val):
+  send_data(pedal_names[g27.config.ACCELERATOR], val)
+def on_brake(val):
+  send_data(pedal_names[g27.config.BRAKE], val)
+def on_clutch(val):
+  # clutch not supported by simulator
+  pass
+def on_angle(val):
+  send_data('angle', val)
+def on_ignition(val):
+  send_data(button_names[g27.config.IGNITION], str(val))
+def on_parking_brake(val):
+  send_data(button_names[g27.config.PARKING_BRAKE], str(val).lower())
+def on_headlamp(val):
+  send_data(button_names[g27.config.HEADLAMP], str(val).lower())
+def on_high_beam(val):
+  send_data(button_names[g27.config.HIGH_BEAM], str(val).lower())
+def on_windshied_wiper(val):
+  send_data(button_names[g27.config.WINDSHIELD_WIPER], str(val).lower())
+def on_gear_shift(gear):
+  send_data("gear_lever_position", gear)
+
+g27 = Wheel()
+
+g27.register_steering_wheel(on_angle)
+g27.register_pedal(g27.config.ACCELERATOR, on_accelerator)
+g27.register_pedal(g27.config.BRAKE, on_brake)
+g27.register_pedal(g27.config.CLUTCH, on_clutch)
+g27.register_button(g27.config.IGNITION, on_ignition)
+g27.register_button(g27.config.PARKING_BRAKE, on_parking_brake)
+g27.register_button(g27.config.HEADLAMP, on_headlamp)
+g27.register_button(g27.config.HIGH_BEAM, on_high_beam)
+g27.register_button(g27.config.WINDSHIELD_WIPER, on_windshied_wiper)
+g27.register_gear_shift(on_gear_shift)
 
 try: 
 
-  wheel = get_wheel()
   if not is_simulator_running(HOST):
     HOST = None
   else:
     print "Found car on", HOST 
 
-  clock = pygame.time.Clock()
-  wheel_config = WheelConfig()
-  keep_going = True
-  while keep_going:
-    for event in pygame.event.get(pygame.JOYAXISMOTION):
-      if DEBUG:
-        print "Motion on axis: ", event.axis, event.value
-      if event.axis == WheelConfig.STEERING_WHEEL_AXIS:
-        send_data("angle", wheel_config.get_steering_Wheel_angle(event.value), HOST)
-      elif event.axis in (WheelConfig.ACCELERATOR_PEDAL_AXIS, WheelConfig.BRAKE_PEDAL_AXIS, WheelConfig.CLUTCH_PEDAL_AXIS):
-        send_data(pedals[event.axis], wheel_config.get_pedal_percentage(event.axis, event.value), HOST)
-
-    for event in pygame.event.get(pygame.JOYBUTTONUP):
-      if DEBUG:
-        print "Released button ", event.button
-      if event.button == WheelConfig.IGNITION_BUTTON and ignition_status == 2:
-        ignition_status = cycle_ignition_status(ignition_status)
-        send_data("ignition_status", ignition_status_values[ignition_status], HOST)
-      elif event.button == WheelConfig.HIGH_BEAM_BUTTON and not headlamp_status:
-        high_beam_status = False
-        send_data("high_beam_status", high_beam_status, HOST)
-      elif wheel_config.is_gear_lever(event.button):
-        gear_lever_position = 0
-        send_data("gear_lever_position", gear_lever_positions[gear_lever_position], HOST)
-
-    for event in pygame.event.get(pygame.JOYBUTTONDOWN):
-      if DEBUG:
-        print "Pressed button ", event.button
-      if event.button == WheelConfig.IGNITION_BUTTON:
-        ignition_status = cycle_ignition_status(ignition_status)
-        send_data("ignition_status", ignition_status_values[ignition_status], HOST)
-      elif wheel_config.is_gear_lever(event.button):
-        gear_lever_position = wheel_config.get_gear_from_button(event.button)
-        send_data("gear_lever_position", gear_lever_positions[gear_lever_position], HOST)
-      elif event.button in status_buttons:
-        vars()[status_buttons[event.button]] = not vars()[status_buttons[event.button]]
-        send_data(status_buttons[event.button],str(vars()[status_buttons[event.button]]).lower(), HOST)
-    clock.tick(25)       
- 
+  g27.loop()
+  
 except Exception as e:
   print e
   print traceback.format_exc()
